@@ -85,9 +85,9 @@ RevealAnime.defineSlide('pulse-slide', {
 const HEXES = [
   // x/y are top-left in slide coordinates (1280x720); the deck's center is
   // left clear for the title. dx/dy/dur give each hex its own drift.
-  { x:   60, y:  90, rotate:  -8, scale: 1.00, hue: 262, dx:  30, dy: -24, dur: 7000 },
-  { x:  190, y: 400, rotate:   6, scale: 0.80, hue: 190, dx: -22, dy:  32, dur: 9000 },
-  { x:  330, y: 130, rotate:  12, scale: 0.65, hue: 340, dx:  18, dy:  28, dur: 6000 },
+  { x:   60, y: 240, rotate:  -8, scale: 1.00, hue: 262, dx:  30, dy: -24, dur: 7000 },
+  { x:  190, y: 430, rotate:   6, scale: 0.80, hue: 190, dx: -22, dy:  32, dur: 9000 },
+  { x:  640, y:  80, rotate:  12, scale: 0.65, hue: 340, dx:  18, dy:  28, dur: 6000 },
   { x:  100, y: 560, rotate:  -4, scale: 0.90, hue:  20, dx:  34, dy: -18, dur: 8000 },
   { x: 1060, y:  70, rotate:   9, scale: 0.85, hue: 140, dx: -28, dy:  30, dur: 7500 },
   { x:  930, y: 350, rotate:  -7, scale: 0.70, hue: 220, dx:  24, dy:  26, dur: 10000 },
