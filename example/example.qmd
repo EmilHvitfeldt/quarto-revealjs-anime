@@ -1,0 +1,131 @@
+---
+title: "revealjs-anime example"
+format:
+  revealjs:
+    revealjs-plugins:
+      - revealjs-anime
+    width: 1280
+    height: 720
+    include-in-header:
+      - text: |
+          <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    include-after-body:
+      - text: |
+          <style>
+            /* .invisible-fragment comes from the extension's stylesheet. */
+            .pulse-target { display: block; text-align: center;
+              font-size: 3em; color: #6f42c1; margin-top: 2em; }
+            .typewriter-target { display: block; font-family: monospace;
+              font-size: 1.4em; text-align: center; margin-top: 3em;
+              min-height: 1.5em; }
+            .hex-sticker { position: absolute; z-index: 0;
+              pointer-events: none; opacity: 0; }
+            .hexes-slide h2, .hexes-slide p { position: relative; z-index: 1; }
+
+            /* Idle terminal. The caret blink is pure CSS: anime.js only ever
+               writes .term-cmd's text, so the two never share a property. */
+            .term { background: #1e1e2e; color: #cdd6f4; font-family: monospace;
+              font-size: 1.3em; padding: 0.8em 1em; border-radius: 8px;
+              text-align: left; min-height: 3em; margin-top: 1.5em; }
+            .term-prompt { color: #a6e3a1; }
+            .term-caret { animation: term-blink 1s steps(1) infinite; }
+            @keyframes term-blink { 50% { opacity: 0; } }
+
+            .formula-target, .loop-target { display: block; font-family: monospace;
+              text-align: center; }
+            .formula-target { font-size: 2.2em; color: #6f42c1; margin-top: 2em;
+              white-space: nowrap; }
+            .loop-target { font-size: 1.1em; white-space: pre; text-align: left;
+              background: #f6f6f8; padding: 0.8em 1em; border-radius: 8px;
+              min-height: 6em; margin-top: 1em; }
+
+            /* Reviewer 2. CSS owns how the strike and cursor look; anime.js
+               owns only the strike's width and the cursor's transform. */
+            .reviewer-quote { display: inline-block; font-style: italic; }
+            .reviewer-strike { position: absolute; height: 4px; width: 0;
+              background: #c0392b; z-index: 3; pointer-events: none; }
+            .reviewer-comment { color: #c0392b; font-style: italic;
+              font-size: 0.8em; }
+            .reviewer-caret { color: #c0392b; visibility: hidden;
+              animation: term-blink 1s steps(1) infinite; }
+            .anime-cursor { position: absolute; left: 0; top: 0; z-index: 4;
+              pointer-events: none; display: flex; align-items: flex-start; }
+            .anime-cursor-label { color: white; font-size: 12px;
+              padding: 1px 6px; border-radius: 4px; margin-left: 2px;
+              white-space: nowrap; }
+          </style>
+          <script src="example.js"></script>
+---
+
+## Welcome
+
+This deck exercises the **revealjs-anime** extension.
+
+Press → to navigate.
+
+## Pulsing { .pulse-slide }
+
+[Look at me]{.pulse-target}
+
+## Typewriter { .typewriter-slide }
+
+[]{.typewriter-target #tw}
+
+::: {.fragment .invisible-fragment #tw-go}
+:::
+
+## Floating hexes { .hexes-slide }
+
+Ambient decoration, no fragments.
+
+## Idle terminal { .terminal-slide }
+
+```{=html}
+<pre class="term"><span class="term-prompt">$ </span><span class="term-cmd"></span><span class="term-caret">&#9608;</span></pre>
+```
+
+## Just one more feature { .formula-slide }
+
+[y ~ x1]{.formula-target}
+
+::: {.fragment .invisible-fragment #formula-grow}
+:::
+
+::: {.fragment .invisible-fragment #formula-deflate}
+:::
+
+## I'll just use a for loop { .forloop-slide }
+
+[]{.loop-target}
+
+::: {.fragment .invisible-fragment #loop-grows}
+:::
+
+::: {.fragment .invisible-fragment #loop-grows-more}
+:::
+
+::: {.fragment .invisible-fragment #loop-collapse}
+:::
+
+## Reviewer 2 { .reviewer-slide }
+
+> [Our method outperforms the baseline on all benchmarks.]{.reviewer-quote}
+
+[]{.reviewer-comment}[&#9608;]{.reviewer-caret}
+
+```{=html}
+<div class="reviewer-strike"></div>
+```
+
+::: {.fragment .invisible-fragment #rev-enter}
+:::
+
+::: {.fragment .invisible-fragment #rev-strike}
+:::
+
+::: {.fragment .invisible-fragment #rev-comment}
+:::
+
+## Done
+
+That's all.

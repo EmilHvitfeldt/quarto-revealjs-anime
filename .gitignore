@@ -1,0 +1,12 @@
+.quarto/
+_site/
+*_files/
+.DS_Store
+node_modules/
+
+# Rendered output of the starter template at the repo root.
+template.html
+
+# The example installs the extension locally; that copy is a build artifact.
+example/_extensions/
+example/*.html

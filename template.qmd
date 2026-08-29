@@ -1,0 +1,36 @@
+---
+title: "My animated deck"
+format:
+  revealjs:
+    revealjs-plugins:
+      - revealjs-anime
+    width: 1280
+    height: 720
+    include-in-header:
+      # Bring your own animation library. anime.js v3 is used here; GSAP,
+      # Motion One or plain CSS work just as well.
+      - text: |
+          <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    include-after-body:
+      - text: |
+          <style>
+            .pulse-target { display: block; text-align: center;
+              font-size: 3em; color: #6f42c1; margin-top: 2em; }
+          </style>
+          <script src="animations.js"></script>
+---
+
+## Welcome
+
+This deck uses the **revealjs-anime** extension.
+
+## Pulsing { .pulse-slide }
+
+[Look at me]{.pulse-target}
+
+## A gated phase { .typewriter-slide }
+
+[]{.typewriter-target #tw}
+
+::: {.fragment .invisible-fragment #tw-go}
+:::

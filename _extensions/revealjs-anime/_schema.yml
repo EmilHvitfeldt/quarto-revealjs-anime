@@ -1,0 +1,12 @@
+$schema: https://m.canouil.dev/quarto-wizard/assets/schema/v2/extension-schema.json
+
+# This extension contributes no YAML options, shortcodes or formats: its API is
+# JavaScript (RevealAnime.defineSlide). The only markup surface is the class
+# below, plus whatever marker class you choose for each animated section.
+classes:
+  invisible-fragment:
+    description: >-
+      Marks a fragment that exists only to gate an animation phase. Combine with
+      .fragment and an id, then wire that id under `fragments` in
+      RevealAnime.defineSlide(). The element is given zero size and zero opacity
+      so it fires a lifecycle event without appearing on the slide.

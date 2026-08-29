@@ -1,0 +1,36 @@
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Syntax-check JavaScript
+        run: |
+          node --check _extensions/revealjs-anime/revealjs-anime.js
+          node --check example/example.js
+          node --check animations.js
+
+      - name: Render the starter template
+        run: |
+          tmp="$(mktemp -d)"
+          cp -R _extensions template.qmd animations.js "$tmp/"
+          quarto render "$tmp/template.qmd"
+
+      - name: Render the example deck
+        run: |
+          mkdir -p example/_extensions
+          cp -R _extensions/revealjs-anime example/_extensions/
+          quarto render example/example.qmd
+
+      - name: Confirm the plugin reached the output
+        run: grep -q "revealjs-anime.js" example/example.html

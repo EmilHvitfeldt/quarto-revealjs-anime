@@ -1,0 +1,76 @@
+{
+  "Animated slide": {
+    "prefix": "anime:slide",
+    "body": [
+      "## ${1:Slide title} { .${2:my-slide} }",
+      "",
+      "$0"
+    ],
+    "description": "A slide heading carrying a marker class, ready to pass to RevealAnime.defineSlide('my-slide', ...)."
+  },
+  "Gated animation phase": {
+    "prefix": "anime:phase",
+    "body": [
+      "::: {.fragment .invisible-fragment #${1:phase-1}}",
+      ":::",
+      "$0"
+    ],
+    "description": "An invisible fragment that fires an animation phase at this step, wired by its id under `fragments`."
+  },
+  "Animated slide with phases": {
+    "prefix": "anime:slide-phases",
+    "body": [
+      "## ${1:Slide title} { .${2:my-slide} }",
+      "",
+      "${3:Slide content}",
+      "",
+      "::: {.fragment .invisible-fragment #${4:phase-1}}",
+      ":::",
+      "",
+      "::: {.fragment .invisible-fragment #${5:phase-2}}",
+      ":::",
+      "$0"
+    ],
+    "description": "A marker-class slide with two gated animation phases."
+  },
+  "defineSlide runner": {
+    "prefix": "anime:define",
+    "body": [
+      "RevealAnime.defineSlide('${1:my-slide}', {",
+      "  enter(section) {",
+      "    const el = section.querySelector('.${2:target}');",
+      "    if (!el) return () => {};",
+      "    $0",
+      "    return () => {",
+      "      // Stop the animation and restore the element.",
+      "    };",
+      "  },",
+      "});"
+    ],
+    "description": "A defineSlide call with an enter runner returning its stop function."
+  },
+  "defineSlide fragment phases": {
+    "prefix": "anime:define-phases",
+    "body": [
+      "RevealAnime.defineSlide('${1:my-slide}', {",
+      "  fragments: {",
+      "    '${2:phase-1}'(section) {",
+      "      $0",
+      "      return () => {",
+      "        // Undo phase 1 on back-navigation.",
+      "      };",
+      "    },",
+      "    '${3:phase-2}': {",
+      "      show(section) {",
+      "        return () => {};",
+      "      },",
+      "      hide(section) {",
+      "        // Re-establish the state phase 1 left behind.",
+      "      },",
+      "    },",
+      "  },",
+      "});"
+    ],
+    "description": "A defineSlide call with two fragment phases, the second with an explicit back-navigation restore."
+  }
+}

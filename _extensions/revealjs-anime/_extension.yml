@@ -1,0 +1,11 @@
+title: revealjs-anime
+author: Emil Hvitfeldt
+version: 0.1.0
+quarto-required: ">=1.4.0"
+contributes:
+  revealjs-plugins:
+    - name: RevealAnime
+      script:
+        - path: revealjs-anime.js
+      stylesheet:
+        - revealjs-anime.css
