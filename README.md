@@ -136,6 +136,37 @@ fragments: {
 }
 ```
 
+### `RevealAnime.reversible(build)`
+
+A `show`/`hide` pair built from two separate calls (one that tweens forward, one that snaps to a rest value) looks fine until a presenter navigates backward *while the forward tween is still playing*: the stop function pauses the live instance, then `hide` discards it and jumps straight to the rest value, so the element visibly teleports instead of reversing. `reversible()` fixes this by building the underlying animation once, lazily, and having every later call reverse or replay *that same instance* in place — never a fresh one, never a hard reset first — so an interrupt mid-flight redirects smoothly from wherever it currently sits.
+
+```js
+fragments: {
+  'cursor-in': {
+    show(section) {
+      if (!section.__cursorFx) {
+        section.__cursorFx = RevealAnime.reversible(() => anime({
+          targets: cursor,
+          translateX: targetX,
+          translateY: targetY,
+          duration: 900,
+          easing: 'easeOutBack',
+          autoplay: false,
+        }));
+      }
+      return section.__cursorFx.forward();
+    },
+    hide(section) {
+      return section.__cursorFx ? section.__cursorFx.backward() : () => {};
+    },
+  },
+}
+```
+
+`build()` must return something exposing `.play()`, `.pause()`, and `.reverse()` — a single anime.js instance already qualifies (created with `autoplay: false` so `reversible` controls when it starts); to animate several properties as one unit, bundle them behind an object exposing those three methods (see `example/example.js`'s `rev-strike` fragment, which drives a strike-through width and a cursor drag together).
+
+This only applies to plain property tweens. A fragment whose `show` does something irreversible by nature — typing text into `textContent`, say — needs its own reverse logic (the bundled example's `typewriter` helper has a `reverse: true` option for exactly this), not `reversible()`.
+
 ### `RevealAnime.slideCoordsOf(section, el)`
 
 Convert an element's screen-space `getBoundingClientRect` values into RevealJS slide-internal coordinates. Useful when positioning new elements based on existing ones — RevealJS applies a CSS scale transform to the whole slide, so raw `getBoundingClientRect` is in screen pixels, not slide units.

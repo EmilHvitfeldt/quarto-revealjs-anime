@@ -154,11 +154,65 @@ window.RevealAnime = (function () {
     };
   }
 
+  // Wraps the "timeline-library" stop-and-retarget pattern: `build()` runs
+  // once, lazily, on first forward()/backward() call. Every later call
+  // reverses or replays *that same instance* in place — never a fresh one,
+  // never a hard reset/seek-to-start first — so an interrupt mid-flight
+  // (navigating the opposite direction before the live tween finishes)
+  // redirects smoothly from wherever the instance currently sits, instead of
+  // snapping to a fixed rest value. `build()` must return something with
+  // `.play()`, `.pause()`, and `.reverse()` (an anime.js instance already
+  // qualifies; combine several into one object exposing those three methods
+  // to animate them as a unit).
+  // anime.js quirk, found only by testing the *second* redirect, not just
+  // the first: `.reverse()` is designed for a one-shot "play backward until
+  // done" and unconditionally marks the instance `completed` the moment it
+  // flips back to the forward direction — even mid-flight, paused, nowhere
+  // near actually done. `.play()` then hard-resets anything it finds
+  // `completed` before resuming, which snaps the instance back to time 0
+  // instead of continuing from its live position. Call this immediately
+  // after `.reverse()` on any real anime.js instance to counteract it; a
+  // no-op on anything else (no `.reversed`/`.completed` to find), so it's
+  // safe to call unconditionally, including from a combine object's own
+  // `reverse()` for each child instance it wraps (see `example/example.js`'s
+  // `rev-strike` fragment).
+  function unstickAfterReverse(a) {
+    if (a && !a.reversed && 'completed' in a) a.completed = false;
+  }
+
+  function reversible(build) {
+    let inst = null;
+    let dir = 'forward';
+    function ensure() {
+      if (!inst) {
+        inst = build();
+        dir = 'forward';
+      }
+      return inst;
+    }
+    function go(target) {
+      const tl = ensure();
+      if (dir !== target) {
+        tl.reverse();
+        unstickAfterReverse(tl);
+        dir = target;
+      }
+      tl.play();
+      return () => tl.pause();
+    }
+    return {
+      forward: () => go('forward'),
+      backward: () => go('backward'),
+    };
+  }
+
   return {
     id: 'reveal-anime',
     init() { /* no-op: lifecycle hooks register lazily via defineSlide */ },
     defineSlide,
     slideCoordsOf,
+    reversible,
+    unstickAfterReverse,
     SLIDE_W,
     SLIDE_H,
   };

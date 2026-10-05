@@ -5,15 +5,18 @@
 
 // Type `text` into `el` by animating a plain {n} object and rewriting
 // textContent on update — never by animating the DOM node's text directly.
-// Options: from (start index, for appending to existing text), reverse
-// (backspace), caret (append a trailing '|' while running), speed (ms/char).
+// Options: from/to (start/end index — default to a full forward or, with
+// reverse, a full backward pass; pass both explicitly to retarget from a
+// live in-progress position), reverse (sugar for "defaults run backward"),
+// caret (append a trailing '|' while running), speed (ms/char).
 function typewriter(el, text, opts = {}) {
-  const from = opts.from || 0;
   const speed = opts.speed || 70;
   const reverse = !!opts.reverse;
   const caret = opts.caret !== false;
-  const start = reverse ? text.length : from;
-  const end = reverse ? from : text.length;
+  const defaultFrom = reverse ? text.length : 0;
+  const defaultTo = reverse ? 0 : text.length;
+  const start = opts.from !== undefined ? opts.from : defaultFrom;
+  const end = opts.to !== undefined ? opts.to : defaultTo;
   const state = { n: start };
   return anime({
     targets: state,
@@ -35,6 +38,18 @@ function cleanTrailingCaret(el) {
   if (el && el.textContent.endsWith('|')) {
     el.textContent = el.textContent.slice(0, -1);
   }
+}
+
+// Live typed-position read, for retargeting a typewriter mid-flight: counts
+// how much of `text` is already committed to `el`, stripping the trailing
+// caret a running/paused instance may have left — the typewriter analog of
+// `getComputedStyle` for a CSS transition. Treats anything that isn't a
+// strict prefix of `text` (e.g. stale content from a different string) as
+// "nothing typed yet", rather than retargeting from a nonsensical position.
+function currentTypedLength(el, text) {
+  let content = el.textContent;
+  if (content.endsWith('|')) content = content.slice(0, -1);
+  return text.startsWith(content) ? content.length : 0;
 }
 
 // A timer bag: schedule chained steps and cancel them all in one call. Every
@@ -169,16 +184,31 @@ RevealAnime.defineSlide('hexes-slide', {
   },
 });
 
+// Typing is itself the animation here, so there's no "rest value" to snap
+// to on back-navigation that wouldn't look like a bug — reversing mid-type
+// must backspace from the live position, not clear instantly. Both show and
+// hide read the live typed length off the DOM (currentTypedLength) and
+// retarget a fresh typewriter instance from there, rather than assuming a
+// fixed start — the same stop-and-retarget principle as the reviewer-slide
+// fragments below, applied to a text-driven rather than property-driven
+// animation.
+const TW_TEXT = 'Hello from revealjs-anime!';
+
 RevealAnime.defineSlide('typewriter-slide', {
   fragments: {
-    'tw-go'(section) {
-      const el = section.querySelector('#tw');
-      if (!el) return () => {};
-      const inst = typewriter(el, 'Hello from revealjs-anime!');
-      return () => {
-        inst.pause();
-        el.textContent = '';
-      };
+    'tw-go': {
+      show(section) {
+        const el = section.querySelector('#tw');
+        if (!el) return () => {};
+        const inst = typewriter(el, TW_TEXT, { from: currentTypedLength(el, TW_TEXT), to: TW_TEXT.length });
+        return () => inst.pause();
+      },
+      hide(section) {
+        const el = section.querySelector('#tw');
+        if (!el) return () => {};
+        const inst = typewriter(el, TW_TEXT, { from: currentTypedLength(el, TW_TEXT), to: 0 });
+        return () => inst.pause();
+      },
     },
   },
 });
@@ -236,84 +266,95 @@ function formulaAt(n) {
 
 const FORMULA_FULL = formulaAt(FORMULA_TERMS + 1);
 
+// Both fragments below are driven entirely through a plain state object
+// (never anime.js targeting `el` directly), wrapped in RevealAnime.reversible()
+// so forward/backward always resume or reverse the *same* live instance —
+// the "timeline library flavor" from the fragment-stop-and-retarget skill.
+// `formula-deflate` additionally derives its displayed text from the live
+// tweened scale rather than from a `complete` callback tied to one
+// direction: that's what makes the collapse-text-swap-pop sequence reverse
+// cleanly as a *single* instance instead of needing phase-tracking across
+// two separately-chained anime() calls.
+
 RevealAnime.defineSlide('formula-slide', {
   enter(section) {
     const el = section.querySelector('.formula-target');
     if (el) {
       el.textContent = FORMULA_START;
-      anime.set(el, { scale: 1, opacity: 1 });
+      el.style.transform = 'scale(1)';
+      el.style.opacity = '1';
     }
-    return () => {};
+    section.__revFx = {};
+    return () => { section.__revFx = null; };
   },
   fragments: {
     'formula-grow': {
       show(section) {
         const el = section.querySelector('.formula-target');
-        if (!el) return () => {};
-        const state = { n: 1 };
-        const text = anime({
-          targets: state,
-          n: FORMULA_TERMS + 1,
-          duration: FORMULA_TERMS * 400,
-          easing: 'linear',
-          update: () => { el.textContent = formulaAt(Math.floor(state.n)); },
-        });
-        // A slight shrink as it grows, to suggest the panic of a model that
-        // keeps acquiring predictors.
-        const shrink = anime({
-          targets: el,
-          scale: 0.78,
-          duration: FORMULA_TERMS * 400,
-          easing: 'linear',
-        });
-        return () => {
-          text.pause();
-          shrink.pause();
-        };
+        if (!el || !section.__revFx) return () => {};
+        if (!section.__revFx.grow) {
+          // A slight shrink as it grows, to suggest the panic of a model
+          // that keeps acquiring predictors. `n` (term count) and `s`
+          // (scale) tween together so one live instance drives both.
+          const state = { n: 1, s: 1 };
+          section.__revFx.grow = RevealAnime.reversible(() => anime({
+            targets: state,
+            n: FORMULA_TERMS + 1,
+            s: 0.78,
+            duration: FORMULA_TERMS * 400,
+            easing: 'linear',
+            autoplay: false,
+            update: () => {
+              el.textContent = formulaAt(Math.floor(state.n));
+              el.style.transform = 'scale(' + state.s + ')';
+            },
+          }));
+        }
+        return section.__revFx.grow.forward();
       },
       hide(section) {
-        const el = section.querySelector('.formula-target');
-        if (el) {
-          anime.remove(el);
-          el.textContent = FORMULA_START;
-          anime.set(el, { scale: 1, opacity: 1 });
-        }
+        const rev = section.__revFx && section.__revFx.grow;
+        return rev ? rev.backward() : () => {};
       },
     },
     'formula-deflate': {
       show(section) {
         const el = section.querySelector('.formula-target');
-        if (!el) return () => {};
-        anime.remove(el);
-        const inst = anime({
-          targets: el,
-          scale: 0.3,
-          opacity: 0,
-          duration: 350,
-          easing: 'easeInQuad',
-          complete: () => {
-            el.textContent = 'y ~ .';
-            anime({
-              targets: el,
-              scale: [0.3, 1],
-              opacity: [0, 1],
-              duration: 700,
-              easing: 'easeOutBack',
-            });
-          },
-        });
-        return () => {
-          anime.remove(el);
-          inst.pause();
-        };
+        if (!el || !section.__revFx) return () => {};
+        if (!section.__revFx.deflate) {
+          // Starts from formula-grow's rest state (scale .78, opacity 1,
+          // full formula) and keyframes down to a collapse (scale .3,
+          // opacity 0) then back up past normal size (scale 1, opacity 1) —
+          // the "just one more feature" punchline pop. The text swap to
+          // 'y ~ .' must happen at the collapse/pop boundary regardless of
+          // direction; it's keyed off `instance.currentTime` (the 350ms
+          // collapse duration), not off the live scale value — `easeOutBack`
+          // overshoots past 1 and back during the pop segment, so scale
+          // isn't monotonic across the two segments and can't reliably tell
+          // "before collapse" from "after pop" (both sit near/above the
+          // threshold). Elapsed time has no such ambiguity in either
+          // direction.
+          const state = { s: 0.78, o: 1 };
+          const COLLAPSE_MS = 350;
+          section.__revFx.deflate = RevealAnime.reversible(() => anime({
+            targets: state,
+            keyframes: [
+              { s: 0.3, o: 0, duration: COLLAPSE_MS, easing: 'easeInQuad' },
+              { s: 1, o: 1, duration: 700, easing: 'easeOutBack' },
+            ],
+            autoplay: false,
+            update: (anim) => {
+              el.textContent = anim.currentTime >= COLLAPSE_MS ? 'y ~ .' : FORMULA_FULL;
+              el.style.transform = 'scale(' + state.s + ')';
+              el.style.opacity = state.o;
+            },
+          }));
+        }
+        return section.__revFx.deflate.forward();
       },
       hide(section) {
-        const el = section.querySelector('.formula-target');
-        if (el) {
-          anime.remove(el);
-          el.textContent = FORMULA_FULL;
-          anime.set(el, { scale: 0.78, opacity: 1 });
-        }
+        const rev = section.__revFx && section.__revFx.deflate;
+        return rev ? rev.backward() : () => {};
       },
     },
   },
@@ -455,10 +496,15 @@ RevealAnime.defineSlide('reviewer-slide', {
     if (strike) anime.set(strike, { width: 0 });
     if (comment) comment.textContent = '';
     section.__cursor = cursor;
+    // Per-fragment reversible() instances, keyed by fragment id. Rebuilt
+    // fresh every slide entry since they close over this entry's `cursor`
+    // node.
+    section.__revFx = {};
     return () => {
       anime.remove(cursor);
       cursor.remove();
       section.__cursor = null;
+      section.__revFx = null;
       if (strike) anime.set(strike, { width: 0 });
       if (comment) {
         cleanTrailingCaret(comment);
@@ -468,29 +514,39 @@ RevealAnime.defineSlide('reviewer-slide', {
     };
   },
   fragments: {
+    // 'rev-enter' and 'rev-strike' are both plain property tweens (cursor
+    // translate, strike width), so they go through RevealAnime.reversible():
+    // interrupting the fly-in or the strike-draw mid-flight redirects the
+    // *same* anime.js instance from its live position, rather than the old
+    // anime.remove() + anime.set() pair that snapped straight to a fixed
+    // rest value. See the fragment-stop-and-retarget skill's "Timeline
+    // library flavor".
     'rev-enter': {
       show(section) {
         const quote = section.querySelector('.reviewer-quote');
         const cursor = section.__cursor;
-        if (!quote || !cursor) return () => {};
-        // Measure at fire time, not at slide entry: the fragment may have
-        // shifted layout, and a cached rect would be stale.
-        const box = RevealAnime.slideCoordsOf(section, quote);
-        const inst = anime({
-          targets: cursor,
-          translateX: box.x - 10,
-          translateY: box.y + box.height * 0.5,
-          duration: 900,
-          easing: 'easeOutBack',
-        });
-        return () => inst.pause();
+        if (!quote || !cursor || !section.__revFx) return () => {};
+        if (!section.__revFx.enter) {
+          // Measure at fire time, not at slide entry: the fragment may have
+          // shifted layout, and a cached rect would be stale. The instance
+          // is built once and reused for every later forward()/backward(),
+          // so this box is captured only on the very first show — matches
+          // the old behavior, since the quote never moves after that.
+          const box = RevealAnime.slideCoordsOf(section, quote);
+          section.__revFx.enter = RevealAnime.reversible(() => anime({
+            targets: cursor,
+            translateX: box.x - 10,
+            translateY: box.y + box.height * 0.5,
+            duration: 900,
+            easing: 'easeOutBack',
+            autoplay: false,
+          }));
+        }
+        return section.__revFx.enter.forward();
       },
       hide(section) {
-        const cursor = section.__cursor;
-        if (cursor) {
-          anime.remove(cursor);
-          anime.set(cursor, { translateX: -250, translateY: 200 });
-        }
+        const rev = section.__revFx && section.__revFx.enter;
+        return rev ? rev.backward() : () => {};
       },
     },
     'rev-strike': {
@@ -498,39 +554,50 @@ RevealAnime.defineSlide('reviewer-slide', {
         const quote = section.querySelector('.reviewer-quote');
         const strike = section.querySelector('.reviewer-strike');
         const cursor = section.__cursor;
-        if (!quote || !strike) return () => {};
-        const box = RevealAnime.slideCoordsOf(section, quote);
-        anime.set(strike, {
-          left: box.x + 'px',
-          top: box.y + box.height * 0.55 + 'px',
-          width: 0,
-        });
-        // CSS owns how the strike looks; anime.js owns only its width, and
-        // the cursor rides along at the leading edge.
-        const line = anime({
-          targets: strike,
-          width: box.width,
-          duration: 1100,
-          easing: 'easeInOutQuad',
-        });
-        const drag = cursor && anime({
-          targets: cursor,
-          translateX: box.x + box.width - 10,
-          translateY: box.y + box.height * 0.55,
-          duration: 1100,
-          easing: 'easeInOutQuad',
-        });
-        return () => {
-          line.pause();
-          if (drag) drag.pause();
-        };
+        if (!quote || !strike || !section.__revFx) return () => {};
+        if (!section.__revFx.strike) {
+          const box = RevealAnime.slideCoordsOf(section, quote);
+          anime.set(strike, {
+            left: box.x + 'px',
+            top: box.y + box.height * 0.55 + 'px',
+            width: 0,
+          });
+          // CSS owns how the strike looks; anime.js owns only its width, and
+          // the cursor rides along at the leading edge. Bundle both tweens
+          // behind one play/pause/reverse surface so reversible() can treat
+          // them as a single unit.
+          section.__revFx.strike = RevealAnime.reversible(() => {
+            const line = anime({
+              targets: strike,
+              width: box.width,
+              duration: 1100,
+              easing: 'easeInOutQuad',
+              autoplay: false,
+            });
+            const drag = cursor && anime({
+              targets: cursor,
+              translateX: box.x + box.width - 10,
+              translateY: box.y + box.height * 0.55,
+              duration: 1100,
+              easing: 'easeInOutQuad',
+              autoplay: false,
+            });
+            return {
+              play: () => { line.play(); if (drag) drag.play(); },
+              pause: () => { line.pause(); if (drag) drag.pause(); },
+              reverse: () => {
+                line.reverse();
+                RevealAnime.unstickAfterReverse(line);
+                if (drag) { drag.reverse(); RevealAnime.unstickAfterReverse(drag); }
+              },
+            };
+          });
+        }
+        return section.__revFx.strike.forward();
       },
       hide(section) {
-        const strike = section.querySelector('.reviewer-strike');
-        if (strike) {
-          anime.remove(strike);
-          anime.set(strike, { width: 0 });
-        }
+        const rev = section.__revFx && section.__revFx.strike;
+        return rev ? rev.backward() : () => {};
       },
     },
     'rev-comment': {

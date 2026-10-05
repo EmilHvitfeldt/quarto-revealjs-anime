@@ -4,6 +4,17 @@ All notable changes to this extension are documented here. The format follows [K
 
 ## [Unreleased]
 
+## [0.2.0]
+
+### Added
+
+- `RevealAnime.reversible(build)`: wraps the "timeline library" stop-and-retarget pattern for anime.js. Builds an animation instance once, lazily, and has every later `forward()`/`backward()` call reverse or replay that same instance in place, so interrupting a fragment's animation mid-flight redirects smoothly from its live position instead of finishing or snapping to a fixed rest value.
+- `RevealAnime.unstickAfterReverse(instance)`: a small counter-fix for an anime.js quirk where `.reverse()` marks an instance `completed` the moment it flips back to the forward direction, causing the next `.play()` to reset it to time 0 instead of continuing. `reversible()` applies this internally; exported so a combined play/pause/reverse wrapper over several instances can apply it to each one.
+
+### Fixed
+
+- The example deck's "Reviewer 2", "Typewriter", and "Just one more feature" slides previously snapped to a fixed rest state when a fragment's animation was interrupted mid-flight by back-navigation (or a subsequent redo). All three now retarget from the live position via `reversible()` (or, for the typewriter, a freshly measured live typed length).
+
 ## [0.1.0]
 
 Initial release.
